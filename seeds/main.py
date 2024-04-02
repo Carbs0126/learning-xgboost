@@ -40,8 +40,20 @@ def seeds():
 
     # 模型预测
     pred = model.predict(xgb_test)
+
+    # print(type(pred))         # <class 'numpy.ndarray'>
+    # print(type(test))         # <class 'pandas.core.frame.DataFrame'>
+    # print(type(test.label))   # <class 'pandas.core.series.Series'>
     error_rate = np.sum(pred != test.label) / test.shape[0]
     print("测试集错误率(softmax): {}".format(error_rate))
+
+    print("========importance result========")
+    importance = model.get_fscore()
+    importance = sorted(importance.items(), key=lambda x:x[1], reverse=True)
+    df = pd.DataFrame(importance, columns=['feature', 'fscore'])
+    print(df)
+    df['fscore'] = df['fscore'] / df['fscore'].sum()
+    print(df)
 
 
 if __name__ == '__main__':
