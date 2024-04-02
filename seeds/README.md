@@ -5,4 +5,4 @@
 4. 数据非 libsvm 格式，pandas 读取
 
 ## 数据集来源
-1. archive.ics.uci.edu/ml/machine-learning-databases/00236/seeds_dataset.txt
+1. https://archive.ics.uci.edu/ml/machine-learning-databases/00236/seeds_dataset.txt
