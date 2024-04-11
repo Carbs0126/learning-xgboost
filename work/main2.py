@@ -4,9 +4,14 @@ import numpy as np
 import sklearn
 import matplotlib.pyplot as plt
 import shap
+import os
+import datetime
 
+# 参考 https://zhuanlan.zhihu.com/p/64799119
 
 def work():
+    store_dir_path = get_current_store_dir()
+    force_plot_dir_path = get_current_force_plot_dir(store_dir_path)
     # label 原标题为：指数偏移值
     data = pd.read_excel("delete_empty_lines2.xls", header=0)
     # 训练数据与测试数据 4:1
@@ -24,97 +29,109 @@ def work():
     model = xgb.XGBRegressor(max_depth=4, learning_rate=0.05, n_estimators=150)
     model.fit(data[cols], data.label.values)
 
-    # params = {
-    #     # "objective": "reg:linear",
-    #     "objective": "reg:squarederror",
-    #     "booster": "gbtree",
-    #     "eta": 0.1,
-    #     "min_child_weight": 1,
-    #     "max_depth": 16
-    # }
-    # num_round = 30
-    # evals = [(xgb_train, 'train'), (xgb_test, 'test')]
-    # evals = [(xgb_train, 'train'), (xgb_train, 'test')]
-    # model = xgb.train(params, xgb_train, num_round, evals=evals)
-    # model.save_model('model2.json')
-    # bst = xgb.Booster()
-    # bst.load_model("model2.json")
-    # pred = bst.predict(xgb_test)
-
+    # 使用所有原始数据进行训练，然后使用这些原始数据进行预测
     pred = model.predict(data[cols])
+
+    file_name_predication = os.path.join(store_dir_path, "predication.txt")
+    file_predication = open(file_name_predication, 'w', encoding='utf-8')
     print("======== origin label & prediction ========")
-    print(f'label index --- label value -- predication')
-    i = 0
+    print("label index --- label value -- predication")
+    file_predication.write("label index --- label value -- predication\n")
     for index, value in data.label.items():
-        print(f'\t{index} \t\t\t\t{round(value, 3)} \t{pred[i]}')
-        i = i + 1
+        line = f'\t{index} \t\t\t\t{round(value, 3)} \t{pred[index]}'
+        print(line)
+        file_predication.write(line + "\n")
+    file_predication.close()
 
-
-    # print("======== prediction ========")
-    # print(pred)
-    # print("======== train.label ========")
-    # print(type(train.label))
-    # print(train.label)
-    # print("======== test.label ========")
-    # print(test.label)
     print("======== importance ========")
-    # importance = model.get_fscore()
-    # importance = sorted(importance.items(), key=lambda x: x[1], reverse=True)
-    # df = pd.DataFrame(importance, columns=['feature', 'fscore'])
-    # print(df)
-    # df['fscore'] = df['fscore'] / df['fscore'].sum()
-    # print(df)
+    file_name_importance_txt = os.path.join(store_dir_path, "importance.txt")
+    file_importance_txt = open(file_name_importance_txt, 'w', encoding='utf-8')
 
-    # ok
+    # ok 绘importance图并存储
     # 获取feature importance
-    # plt.figure(figsize=(15, 5))
-    # plt.bar(range(len(cols)), model.feature_importances_)
-    # plt.xticks(range(len(cols)), cols, rotation=-45, fontsize=14)
-    # plt.title('Feature importance', fontsize=14)
-    # plt.grid(axis="both", linestyle='-.', alpha=0.3)
+    plt.figure(figsize=(15, 5))
+    plt.bar(range(len(cols)), model.feature_importances_)
+    plt.xticks(range(len(cols)), cols, rotation=-45, fontsize=14)
+    plt.title('Feature importance', fontsize=14)
+    plt.grid(axis="both", linestyle='-.', alpha=0.3)
+    plt.savefig(os.path.join(store_dir_path, "plot_importance.png"), dpi=300)
     # plt.show()
+    plt.close()
 
-    # model是在第1节中训练的模型
+    # 将importance图写入文件
+    file_importance_txt.write("column name -- importance\n")
+    print("column name -- importance\n")
+    for index, value in enumerate(cols):
+        line = f'\t{value} \t\t\t\t{model.feature_importances_[index]} \t'
+        print(line)
+        file_importance_txt.write(line + "\n")
+    file_importance_txt.close()
+
+    # 使用SHAP分析， model是在第1节中训练的模型
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(data[cols])
-    print(shap_values.shape)
 
-    # 单个样本的SHAP值
-    # 比如我们挑选数据集中的第30位
-    # j = 30
-    # player_explainer = pd.DataFrame()
-    # player_explainer['feature'] = cols
-    # player_explainer['feature_value'] = data[cols].iloc[j].values
-    # player_explainer['shap_value'] = shap_values[j]
-
-    # ok
-    # 单个值的shap分析，存为图片
-    # j = 10
-    # shap.initjs()
-    # shap.force_plot(explainer.expected_value, shap_values[j], data[cols].iloc[j], matplotlib=True, show=True)
-    # plt.savefig('force_plot.jpg')
+    # 每一行的数据都生成一个图片，可能会比较耗时
+    shap.initjs()
+    for index, value in data.label.items():
+        # shap.force_plot(explainer.expected_value, shap_values[j], data[cols].iloc[j], matplotlib=True, show=True)
+        shap.force_plot(explainer.expected_value, shap_values[index], data[cols].iloc[index], matplotlib=True,
+                        show=False)
+        fig = plt.savefig(os.path.join(force_plot_dir_path, f"force_plot_{index}.jpg"), dpi=300)
+        plt.close(fig)
+        print(f"force_plot {index + 1}/{data.label.size} finish.")
 
     # ok 数据效果不大好，参考 https://zhuanlan.zhihu.com/p/64799119  3.2节
     # 对特征的总体分析
-    # shap.summary_plot(shap_values, data[cols])
+    shap.summary_plot(shap_values, data[cols], show=False)
+    fig = plt.savefig(os.path.join(store_dir_path, "plot_summary_dot.png"), dpi=300, format='png')
+    plt.close(fig)
 
     # 可以把一个特征对目标变量影响程度的绝对值的均值作为这个特征的重要性。
-    # shap.summary_plot(shap_values, data[cols], plot_type="bar")
+    shap.summary_plot(shap_values, data[cols], plot_type="bar", show=False)
+    fig = plt.savefig(os.path.join(store_dir_path, "plot_summary_bar.png"), dpi=300, format='png')
+    plt.close(fig)
 
     # 数据效果不太好
     # 3.3 部分依赖图Partial Dependence Plot
     # 第一个参数备选 ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
-    # shap.dependence_plot('G', shap_values, data[cols], interaction_index=None, show=True)
+    shap.dependence_plot('G', shap_values, data[cols], interaction_index=None, show=False)
+    fig = plt.savefig(os.path.join(store_dir_path, "plot_dependence.png"), dpi=300, format='png')
+    plt.close(fig)
 
     # 数据效果不太好
     # 3.4 对多个变量的交互进行分析
-    # shap_interaction_values = shap.TreeExplainer(model).shap_interaction_values(data[cols])
-    # shap.summary_plot(shap_interaction_values, data[cols], max_display=4)
+    shap_interaction_values = shap.TreeExplainer(model).shap_interaction_values(data[cols])
+    # max_display 可调，最大是列数，即 len(cols)
+    shap.summary_plot(shap_interaction_values, data[cols], max_display=4, show=False)
+    fig = plt.savefig(os.path.join(store_dir_path, "plot_summary_interaction.png"), dpi=300, format='png')
+    plt.close(fig)
 
     # 数据效果不太好
     # 我们也可以用dependence_plot描绘两个变量交互下变量对目标值的影响。
     # 第一个参数备选 ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
-    shap.dependence_plot('G', shap_values, data[cols], interaction_index='H', show=True)
+    dependence_column_name_0 = 'G'
+    dependence_column_name_1 = 'H'
+    shap.dependence_plot(dependence_column_name_0, shap_values, data[cols], interaction_index=dependence_column_name_1,
+                         show=False)
+    fig = plt.savefig(
+        os.path.join(store_dir_path, f"plot_dependence_{dependence_column_name_0}_{dependence_column_name_1}.png"),
+        dpi=300, format='png')
+    plt.close(fig)
+
+
+def get_current_store_dir():
+    project_path = os.path.dirname(os.path.realpath(__file__))
+    time_dir_name = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    dir_path = os.path.join(project_path, time_dir_name)
+    os.makedirs(dir_path)
+    return dir_path
+
+
+def get_current_force_plot_dir(store_dir):
+    force_plot_dir_path = os.path.join(store_dir, "force_plot")
+    os.makedirs(force_plot_dir_path)
+    return force_plot_dir_path
 
 
 if __name__ == '__main__':
