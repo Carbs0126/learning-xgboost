@@ -15,7 +15,7 @@ def work():
     store_dir_path = get_current_store_dir()
     force_plot_dir_path = get_current_force_plot_dir(store_dir_path)
     # label 原标题为：指数偏移值
-    data = pd.read_excel("delete_empty_lines2.xls", header=0)
+    data = pd.read_excel("test.xls", header=0)
     # 训练数据与测试数据 4:1
     # mask = np.random.rand(len(data)) < 0.8
     # mask = np.random.rand(len(data)) < 1
@@ -23,11 +23,11 @@ def work():
     # test = data[~mask]
     # 选中excel中的多列
     # [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
-    # selected_column_indices = list(range(6, 25))
+    selected_column_indices = list(range(0, 8))
     # xgb_train = xgb.DMatrix(train.iloc[:, selected_column_indices], label=train.label)
     # xgb_test = xgb.DMatrix(test.iloc[:, selected_column_indices], label=test.label)
 
-    cols = ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y']
+    cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
     model = xgb.XGBRegressor(max_depth=4, learning_rate=0.05, n_estimators=150)
     model.fit(data[cols], data.label.values)
 
@@ -80,14 +80,17 @@ def work():
     correlation_matrix = shap_df.corr()
 
     # 每一行的数据都生成一个图片，可能会比较耗时
-    # shap.initjs()
-    # for index, value in data.label.items():
-    #     # shap.force_plot(explainer.expected_value, shap_values[j], data[cols].iloc[j], matplotlib=True, show=True)
-    #     shap.force_plot(explainer.expected_value, shap_values[index], data[cols].iloc[index], matplotlib=True,
-    #                     show=False)
-    #     fig = plt.savefig(os.path.join(force_plot_dir_path, f"force_plot_{index}.jpg"), dpi=300)
-    #     plt.close(fig)
-    #     print(f"force_plot {index + 1}/{data.label.size} finish.")
+    max_pic = 10
+    shap.initjs()
+    for index, value in data.label.items():
+        if index > max_pic:
+            break
+        # shap.force_plot(explainer.expected_value, shap_values[j], data[cols].iloc[j], matplotlib=True, show=True)
+        shap.force_plot(explainer.expected_value, shap_values[index], data[cols].iloc[index], matplotlib=True,
+                        show=False)
+        fig = plt.savefig(os.path.join(force_plot_dir_path, f"force_plot_{index}.jpg"), dpi=300)
+        plt.close(fig)
+        print(f"force_plot {index + 1}/{data.label.size} finish.")
 
     # ok 数据效果不大好，参考 https://zhuanlan.zhihu.com/p/64799119  3.2节
     # 对特征的总体分析
@@ -117,9 +120,9 @@ def work():
 
     # 数据效果不太好
     # 我们也可以用dependence_plot描绘两个变量交互下变量对目标值的影响。
-    # 第一个参数备选 ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
-    dependence_column_name_0 = 'G'
-    dependence_column_name_1 = 'H'
+    # 第一个参数备选 ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+    dependence_column_name_0 = 'A'
+    dependence_column_name_1 = 'F'
     shap.dependence_plot(dependence_column_name_0, shap_values, data[cols], interaction_index=dependence_column_name_1,
                          show=False)
     fig = plt.savefig(

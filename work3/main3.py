@@ -10,12 +10,11 @@ import seaborn as sns
 
 # 参考 https://zhuanlan.zhihu.com/p/64799119
 
-
 def work():
     store_dir_path = get_current_store_dir()
     force_plot_dir_path = get_current_force_plot_dir(store_dir_path)
     # label 原标题为：指数偏移值
-    data = pd.read_excel("delete_empty_lines2.xls", header=0)
+    data = pd.read_excel("with_empty_lines.xls", header=0)
     # 训练数据与测试数据 4:1
     # mask = np.random.rand(len(data)) < 0.8
     # mask = np.random.rand(len(data)) < 1
@@ -23,11 +22,11 @@ def work():
     # test = data[~mask]
     # 选中excel中的多列
     # [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
-    # selected_column_indices = list(range(6, 25))
+    selected_column_indices = list(range(6, 25))
     # xgb_train = xgb.DMatrix(train.iloc[:, selected_column_indices], label=train.label)
     # xgb_test = xgb.DMatrix(test.iloc[:, selected_column_indices], label=test.label)
 
-    cols = ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y']
+    cols = ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
     model = xgb.XGBRegressor(max_depth=4, learning_rate=0.05, n_estimators=150)
     model.fit(data[cols], data.label.values)
 
@@ -79,6 +78,12 @@ def work():
     # 计算 SHAP 值的相关性矩阵
     correlation_matrix = shap_df.corr()
 
+    # 创建热力图
+    # plt.figure(figsize=(10, 10))
+    # sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm")
+    # plt.title("SHAP Values Correlation Matrix")
+    # plt.show()
+
     # 每一行的数据都生成一个图片，可能会比较耗时
     # shap.initjs()
     # for index, value in data.label.items():
@@ -126,14 +131,6 @@ def work():
         os.path.join(store_dir_path, f"plot_dependence_{dependence_column_name_0}_{dependence_column_name_1}.png"),
         dpi=300, format='png')
     plt.close(fig)
-
-    # 创建热力图
-    plt.figure(figsize=(10, 10))
-    sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm")
-    plt.title("SHAP Values Correlation Matrix")
-    fig = plt.savefig(os.path.join(store_dir_path, "cool_warm.png"), dpi=300, format='png')
-    plt.close(fig)
-    # plt.show()
 
 
 def get_current_store_dir():
