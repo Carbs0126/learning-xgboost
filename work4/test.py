@@ -7,6 +7,8 @@ import shap
 import os
 import datetime
 import seaborn as sns
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.colors as mcolors
 
 # 参考 https://zhuanlan.zhihu.com/p/64799119
 
@@ -80,17 +82,17 @@ def work():
     correlation_matrix = shap_df.corr()
 
     # 每一行的数据都生成一个图片，可能会比较耗时
-    max_pic = 10
-    shap.initjs()
-    for index, value in data.label.items():
-        if index > max_pic:
-            break
-        # shap.force_plot(explainer.expected_value, shap_values[j], data[cols].iloc[j], matplotlib=True, show=True)
-        shap.force_plot(explainer.expected_value, shap_values[index], data[cols].iloc[index], matplotlib=True,
-                        show=False)
-        fig = plt.savefig(os.path.join(force_plot_dir_path, f"force_plot_{index}.jpg"), dpi=300)
-        plt.close(fig)
-        print(f"force_plot {index + 1}/{data.label.size} finish.")
+    # max_pic = 10
+    # shap.initjs()
+    # for index, value in data.label.items():
+    #     if index > max_pic:
+    #         break
+    #     # shap.force_plot(explainer.expected_value, shap_values[j], data[cols].iloc[j], matplotlib=True, show=True)
+    #     shap.force_plot(explainer.expected_value, shap_values[index], data[cols].iloc[index], matplotlib=True,
+    #                     show=False)
+    #     fig = plt.savefig(os.path.join(force_plot_dir_path, f"force_plot_{index}.jpg"), dpi=300)
+    #     plt.close(fig)
+    #     print(f"force_plot {index + 1}/{data.label.size} finish.")
 
     # ok 数据效果不大好，参考 https://zhuanlan.zhihu.com/p/64799119  3.2节
     # 对特征的总体分析
@@ -132,7 +134,30 @@ def work():
 
     # 创建热力图
     plt.figure(figsize=(10, 10))
-    sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm")
+    # sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm")
+    # sns.heatmap(correlation_matrix, annot=True, cmap="RdBu_r")
+    # 创建一个连续的色彩映射，这里依然以 viridis 为例
+    # cmap_full = sns.cubehelix_palette(as_cmap=True)
+    # cmap_full = sns.color_palette("viridis", as_cmap=True)
+    # 提取颜色范围的一个子集
+    # cmap_reduced = cmap_full.truncate(start=0.2, stop=0.8)  # 只使用中间40%的颜色范围
+
+    # full_palette = sns.color_palette("viridis", 256)  # 获取完整的viridis颜色列表
+    full_palette = sns.color_palette("RdBu_r", 256)
+
+    # 我们可以选择其中的一部分来创建一个新的ListedColormap
+    start_index = int(0.2 * len(full_palette))  # 开始位置（20%）
+    end_index = int(0.8 * len(full_palette))  # 结束位置（80%）
+    reduced_palette = full_palette[start_index:end_index]
+
+    # 创建新的ListedColormap
+    cmap_reduced = mcolors.ListedColormap(reduced_palette)
+
+    # 在heatmap或其他需要色彩映射的图表中应用
+    # sns.heatmap(data_matrix, cmap=cmap_reduced)
+    sns.heatmap(correlation_matrix, annot=True, fmt=".2f", linewidths=0.3, cmap=cmap_reduced, annot_kws={"fontsize": 8})
+    # sns.heatmap(data=data, annot=True, fmt="d", linewidths=0.3, cmap="RdBu_r", cbar_kws = {"orientation": "horizontal"})
+
     plt.title("SHAP Values Correlation Matrix")
     fig = plt.savefig(os.path.join(store_dir_path, "cool_warm.png"), dpi=300, format='png')
     plt.close(fig)

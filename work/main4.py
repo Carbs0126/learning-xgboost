@@ -29,7 +29,7 @@ def work():
     # xgb_train = xgb.DMatrix(train.iloc[:, selected_column_indices], label=train.label)
     # xgb_test = xgb.DMatrix(test.iloc[:, selected_column_indices], label=test.label)
 
-    cols = ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y']
+    cols = ['F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y']
     model = xgb.XGBRegressor(max_depth=4, learning_rate=0.05, n_estimators=150)
     model.fit(data[cols], data.label.values)
 
@@ -65,8 +65,13 @@ def work():
     # 将importance图写入文件
     file_importance_txt.write("column name -- importance\n")
     print("column name -- importance\n")
+    # without_zero_importance
+    cols_zero_importance = []
     for index, value in enumerate(cols):
-        line = f'\t{value} \t\t\t\t{model.feature_importances_[index]} \t'
+        importance_v = model.feature_importances_[index]
+        if importance_v < 0.0001:
+            cols_zero_importance.append(value)
+        line = f'\t{value} \t\t\t\t{importance_v} \t'
         print(line)
         file_importance_txt.write(line + "\n")
     file_importance_txt.close()
@@ -74,12 +79,30 @@ def work():
     # 使用SHAP分析， model是在第1节中训练的模型
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(data[cols])
-
     # 将 SHAP 值转换成 Pandas DataFrame
     shap_df = pd.DataFrame(shap_values, columns=data[cols].columns)
-
     # 计算 SHAP 值的相关性矩阵
     correlation_matrix = shap_df.corr()
+    print("====================")
+    print(correlation_matrix.shape)
+    print(correlation_matrix.head(20))
+
+    correlation_matrix_without_zero = correlation_matrix.drop(cols_zero_importance, axis=1)
+    correlation_matrix_without_zero = correlation_matrix_without_zero.drop(cols_zero_importance, axis=0)
+    print("========== correlation_matrix_without_zero ==========")
+    print(correlation_matrix_without_zero.shape)
+    print(correlation_matrix_without_zero.head(20))
+    # correlation_matrix.drop()
+
+    # cols_zero_importance
+
+    # print(cols_zero_importance)
+
+    # shap_values_without_z_i = explainer.shap_values(data[cols_without_z_i])
+    # 将 SHAP 值转换成 Pandas DataFrame
+    # shap_df_without_z_i = pd.DataFrame(shap_values, columns=data[cols_without_z_i].columns)
+    # 计算 SHAP 值的相关性矩阵
+    # correlation_matrix_without_z_i = shap_df_without_z_i.corr()
 
     # 每一行的数据都生成一个图片，可能会比较耗时
     # shap.initjs()
@@ -105,8 +128,11 @@ def work():
     # 数据效果不太好
     # 3.3 部分依赖图Partial Dependence Plot
     # 第一个参数备选 ['G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
-    shap.dependence_plot('G', shap_values, data[cols], interaction_index=None, show=False)
-    fig = plt.savefig(os.path.join(store_dir_path, "plot_dependence.png"), dpi=300, format='png')
+    plt.figure(figsize=(15, 8))
+    col_name_for_shap_value = 'G'
+    shap.dependence_plot(col_name_for_shap_value, shap_values, data[cols], interaction_index=None, show=False)
+    fig = plt.savefig(os.path.join(store_dir_path, f"plot_dependence_{col_name_for_shap_value}_for_shap_value.png"),
+                      dpi=300, format='png')
     plt.close(fig)
 
     # 数据效果不太好
@@ -129,7 +155,7 @@ def work():
         dpi=300, format='png')
     plt.close(fig)
 
-    # 创建热力图
+    # ========================== 创建热力图 ==========================
     plt.figure(figsize=(10, 10))
     # sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm")
     # sns.heatmap(correlation_matrix, annot=True, cmap="RdBu_r")
@@ -155,6 +181,27 @@ def work():
     fig = plt.savefig(os.path.join(store_dir_path, "cool_warm.png"), dpi=300, format='png')
     plt.close(fig)
     # plt.show()
+
+    # ========================== 创建热力图 去掉空 ==========================
+    plt.figure(figsize=(10, 10))
+    # full_palette = sns.color_palette("RdBu_r", 256)
+    #
+    # # 我们可以选择其中的一部分来创建一个新的ListedColormap
+    # start_index = int(0.2 * len(full_palette))  # 开始位置（20%）
+    # end_index = int(0.8 * len(full_palette))  # 结束位置（80%）
+    # reduced_palette = full_palette[start_index:end_index]
+    #
+    # # 创建新的ListedColormap
+    # cmap_reduced = mcolors.ListedColormap(reduced_palette)
+
+    # 在heatmap或其他需要色彩映射的图表中应用
+    # sns.heatmap(data_matrix, cmap=cmap_reduced)
+    sns.heatmap(correlation_matrix_without_zero, annot=True, fmt=".2f", linewidths=0.3, cmap=cmap_reduced, annot_kws={"fontsize": 8})
+    # sns.heatmap(data=data, annot=True, fmt="d", linewidths=0.3, cmap="RdBu_r", cbar_kws = {"orientation": "horizontal"})
+
+    plt.title("SHAP Values Correlation Matrix")
+    fig = plt.savefig(os.path.join(store_dir_path, "cool_warm_without_zero_importance.png"), dpi=300, format='png')
+    plt.close(fig)
 
 
 def get_current_store_dir():
