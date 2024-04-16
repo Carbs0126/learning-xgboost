@@ -67,10 +67,15 @@ def work():
     print("column name -- importance\n")
     # without_zero_importance
     cols_zero_importance = []
+    cols_non_zero_importance_name = []
+    cols_non_zero_importance_index = []
     for index, value in enumerate(cols):
         importance_v = model.feature_importances_[index]
         if importance_v < 0.0001:
             cols_zero_importance.append(value)
+        else:
+            cols_non_zero_importance_name.append(value)
+            cols_non_zero_importance_index.append(index)
         line = f'\t{value} \t\t\t\t{importance_v} \t'
         print(line)
         file_importance_txt.write(line + "\n")
@@ -79,6 +84,12 @@ def work():
     # 使用SHAP分析， model是在第1节中训练的模型
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(data[cols])
+    # shap_values <class 'numpy.ndarray'> (82, 20) 82行，20列
+    print("===========>>>> shap_values : " + str(shap_values.shape))
+    shap_values_non_zero = shap_values[:, cols_non_zero_importance_index]
+    print("===========>>>> shap_values_non_zero : " + str(shap_values_non_zero.shape))
+
+    # shap_values_non_zero = explainer.shap_values(data[cols_non_zero_importance])
     # 将 SHAP 值转换成 Pandas DataFrame
     shap_df = pd.DataFrame(shap_values, columns=data[cols].columns)
     # 计算 SHAP 值的相关性矩阵
@@ -118,6 +129,10 @@ def work():
     # 对特征的总体分析
     shap.summary_plot(shap_values, data[cols], show=False)
     fig = plt.savefig(os.path.join(store_dir_path, "plot_summary_dot.png"), dpi=300, format='png')
+    plt.close(fig)
+
+    shap.summary_plot(shap_values_non_zero, data[cols_non_zero_importance_name], show=False)
+    fig = plt.savefig(os.path.join(store_dir_path, "plot_summary_dot_non_zero_importance.png"), dpi=300, format='png')
     plt.close(fig)
 
     # 可以把一个特征对目标变量影响程度的绝对值的均值作为这个特征的重要性。
